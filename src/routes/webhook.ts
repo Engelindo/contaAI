@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { prisma } from "../db/prisma.js";
 import { parseExpense } from "../ai/parseExpense.js";
+import { createExpense, getSummary } from "../db/expenses.js";
 
 const router = Router();
 
@@ -12,21 +12,23 @@ router.post("/", async (req, res) => {
   }
 
   try {
-    // 1. AI parses message
-    const expense = await parseExpense(message);
+    const parsedMessage = await parseExpense(message);
 
-    // 2. Save to DB (Prisma)
-    const saved = await prisma.expense.create({
-      data: {
-        amount: expense.amount,
-        category: expense.category,
-        description: expense.description,
-        date: new Date(expense.date),
-      },
-    });
+    if (parsedMessage.intent === "get_summary") {
+      const summary = await getSummary(parsedMessage.period);
+
+      return res.json({
+        success: true,
+        intent: "get_summary",
+        summary,
+      });
+    }
+
+    const saved = await createExpense(parsedMessage);
 
     return res.json({
       success: true,
+      intent: "add_expense",
       expense: saved,
     });
   } catch (err) {
