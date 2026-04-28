@@ -1,43 +1,10 @@
 import OpenAI from "openai";
 import { env } from "../config/env.js";
-import { z } from "zod";
+import { parseResultSchema, type ParsedMessage } from "../types/ai.js";
 
 const client = new OpenAI({
   apiKey: env.OPENAI_API_KEY,
 });
-
-const categorySchema = z.enum([
-  "FOOD",
-  "TRANSPORT",
-  "HOUSING",
-  "ENTERTAINMENT",
-  "HEALTH",
-  "OTHER",
-]);
-
-const summaryPeriodSchema = z.enum([
-  "TODAY",
-  "CURRENT_WEEK",
-  "CURRENT_MONTH",
-  "LAST_MONTH",
-  "ALL_TIME",
-]);
-
-const parseResultSchema = z.discriminatedUnion("intent", [
-  z.object({
-    intent: z.literal("add_expense"),
-    amount: z.number(),
-    category: categorySchema,
-    date: z.string(),
-    description: z.string(),
-  }),
-  z.object({
-    intent: z.literal("get_summary"),
-    period: summaryPeriodSchema,
-  }),
-]);
-
-export type ParsedMessage = z.infer<typeof parseResultSchema>;
 
 const systemPrompt = `
 You are a finance intent parser for Brazilian Portuguese user messages.

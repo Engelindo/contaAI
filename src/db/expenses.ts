@@ -1,11 +1,16 @@
 import { prisma } from "./prisma.js";
+import type { AddExpenseInput, SummaryPeriod } from "../types/ai.js";
 
-export type SummaryPeriod =
-  | "TODAY"
-  | "CURRENT_WEEK"
-  | "CURRENT_MONTH"
-  | "LAST_MONTH"
-  | "ALL_TIME";
+export async function createExpense(input: AddExpenseInput) {
+  return prisma.expense.create({
+    data: {
+      amount: input.amount,
+      category: input.category,
+      description: input.description,
+      date: new Date(input.date),
+    },
+  });
+}
 
 export async function getTotalExpenses() {
   const result = await prisma.expense.aggregate({
