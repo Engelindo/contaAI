@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { formatSummaryReply } from "../ai/formatSummaryReply.js";
 import { parseExpense } from "../ai/parseExpense.js";
 import { createExpense, getSummary } from "../db/expenses.js";
 
@@ -21,15 +22,18 @@ router.post("/", async (req, res) => {
         success: true,
         intent: "get_summary",
         summary,
+        message: formatSummaryReply(summary),
       });
     }
 
-    const saved = await createExpense(parsedMessage);
+    const { reply, ...expenseData } = parsedMessage;
+    const saved = await createExpense(expenseData);
 
     return res.json({
       success: true,
       intent: "add_expense",
       expense: saved,
+      message: reply,
     });
   } catch (err) {
     console.error(err);
