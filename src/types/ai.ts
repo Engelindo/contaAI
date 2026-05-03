@@ -24,6 +24,8 @@ export const parseResultSchema = z.discriminatedUnion("intent", [
     category: categorySchema,
     date: z.string(),
     description: z.string(),
+    /** Short user-facing confirmation in Brazilian Portuguese (WhatsApp-style). */
+    reply: z.string(),
   }),
   z.object({
     intent: z.literal("get_summary"),
@@ -32,5 +34,8 @@ export const parseResultSchema = z.discriminatedUnion("intent", [
 ]);
 
 export type ParsedMessage = z.infer<typeof parseResultSchema>;
-export type AddExpenseInput = Extract<ParsedMessage, { intent: "add_expense" }>;
+export type AddExpenseInput = Omit<
+  Extract<ParsedMessage, { intent: "add_expense" }>,
+  "reply"
+>;
 export type SummaryPeriod = z.infer<typeof summaryPeriodSchema>;

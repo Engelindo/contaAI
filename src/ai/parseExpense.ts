@@ -28,10 +28,11 @@ If intent is "add_expense", return this shape:
   "amount": number,
   "category": "FOOD" | "TRANSPORT" | "HOUSING" | "ENTERTAINMENT" | "HEALTH" | "OTHER",
   "date": "YYYY-MM-DD",
-  "description": "short lowercase description in Portuguese"
+  "description": "short lowercase description in Portuguese",
+  "reply": "1–3 short sentences in natural Brazilian Portuguese confirming the expense: state the amount in R$, the category in plain words (not enum codes), and the date if useful. Friendly WhatsApp tone, no JSON inside reply."
 }
 
-If intent is "get_summary", return this shape:
+If intent is "get_summary", return this shape (no reply field — totals come from the database):
 {
   "intent": "get_summary",
   "period": "TODAY" | "CURRENT_WEEK" | "CURRENT_MONTH" | "LAST_MONTH" | "ALL_TIME"
