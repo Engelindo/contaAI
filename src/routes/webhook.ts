@@ -2,21 +2,31 @@ import { Router } from "express";
 import { formatSummaryReply } from "../ai/formatSummaryReply.js";
 import { parseExpense } from "../ai/parseExpense.js";
 import { createExpense, getSummary } from "../db/expenses.js";
+import { getOrCreateUserByPhone } from "../db/users.js";
 
 const router = Router();
 
 router.post("/", async (req, res) => {
-  const { message } = req.body;
+  const { message, phoneNumber } = req.body;
 
   if (!message) {
     return res.status(400).json({ error: "Missing message" });
   }
 
+  if (!phoneNumber || typeof phoneNumber !== "string") {
+    return res.status(400).json({ error: "Missing phoneNumber" });
+  }
+
   try {
+    const user = await getOrCreateUserByPhone(phoneNumber);
     const parsedMessage = await parseExpense(message);
 
     if (parsedMessage.intent === "get_summary") {
-      const summary = await getSummary(parsedMessage.period);
+      const summary = await getSummary(
+        user.id,
+        parsedMessage.period,
+        parsedMessage.subcategory,
+      );
 
       return res.json({
         success: true,
@@ -27,7 +37,7 @@ router.post("/", async (req, res) => {
     }
 
     const { reply, ...expenseData } = parsedMessage;
-    const saved = await createExpense(expenseData);
+    const saved = await createExpense(user.id, expenseData);
 
     return res.json({
       success: true,
