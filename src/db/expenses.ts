@@ -1,32 +1,15 @@
 import { prisma } from "./prisma.js";
 import type { AddExpenseInput, SummaryPeriod } from "../types/ai.js";
 
-export async function createExpense(input: AddExpenseInput) {
+export async function createExpense(userId: string, input: AddExpenseInput) {
   return prisma.expense.create({
     data: {
+      userId,
       amount: input.amount,
       category: input.category,
+      subcategory: input.subcategory ?? null,
       description: input.description,
       date: new Date(input.date),
-    },
-  });
-}
-
-export async function getTotalExpenses() {
-  const result = await prisma.expense.aggregate({
-    _sum: {
-      amount: true,
-    },
-  });
-
-  return result._sum.amount ?? 0;
-}
-
-export async function getExpensesByCategory() {
-  return prisma.expense.groupBy({
-    by: ["category"],
-    _sum: {
-      amount: true,
     },
   });
 }
@@ -47,7 +30,7 @@ function getPeriodRange(period: SummaryPeriod): { start?: Date; end?: Date } {
   }
 
   if (period === "CURRENT_WEEK") {
-    const day = now.getDay(); // 0=Sunday
+    const day = now.getDay();
     const diffToMonday = day === 0 ? -6 : 1 - day;
     const start = new Date(year, month, now.getDate() + diffToMonday, 0, 0, 0, 0);
     const end = new Date(start);
@@ -66,9 +49,26 @@ function getPeriodRange(period: SummaryPeriod): { start?: Date; end?: Date } {
   return { start, end };
 }
 
-export async function getSummary(period: SummaryPeriod) {
+export async function getSummary(
+  userId: string,
+  period: SummaryPeriod,
+  subcategoryFilter?: string,
+) {
   const { start, end } = getPeriodRange(period);
-  const where = start && end ? { date: { gte: start, lt: end } } : {};
+  const subcategory = subcategoryFilter?.trim();
+
+  const where = {
+    userId,
+    ...(start && end ? { date: { gte: start, lt: end } } : {}),
+    ...(subcategory
+      ? {
+          subcategory: {
+            contains: subcategory,
+            mode: "insensitive" as const,
+          },
+        }
+      : {}),
+  };
 
   const [totals, byCategory] = await Promise.all([
     prisma.expense.aggregate({
@@ -86,6 +86,7 @@ export async function getSummary(period: SummaryPeriod) {
 
   return {
     period,
+    subcategoryFilter: subcategory ?? null,
     totalAmount: totals._sum?.amount ?? 0,
     expenseCount: totals._count ?? 0,
     byCategory: byCategory.map((item) => ({

@@ -22,6 +22,14 @@ export const parseResultSchema = z.discriminatedUnion("intent", [
     intent: z.literal("add_expense"),
     amount: z.number(),
     category: categorySchema,
+    /** Merchant or service label, e.g. "Uber", "iFood". Omit if not explicit. */
+    subcategory: z
+      .string()
+      .nullish()
+      .transform((s) => {
+        const t = s?.trim();
+        return t && t.length > 0 ? t : undefined;
+      }),
     date: z.string(),
     description: z.string(),
     /** Short user-facing confirmation in Brazilian Portuguese (WhatsApp-style). */
@@ -30,6 +38,14 @@ export const parseResultSchema = z.discriminatedUnion("intent", [
   z.object({
     intent: z.literal("get_summary"),
     period: summaryPeriodSchema,
+    /** When user asks spending for a specific merchant/service (e.g. "quanto gastei com uber"). */
+    subcategory: z
+      .string()
+      .nullish()
+      .transform((s) => {
+        const t = s?.trim();
+        return t && t.length > 0 ? t : undefined;
+      }),
   }),
 ]);
 
