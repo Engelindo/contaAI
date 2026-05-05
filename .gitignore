@@ -47,6 +47,16 @@ web_modules/
 # TypeScript cache
 *.tsbuildinfo
 
+# Stray tsc emit next to Prisma config/seed (sources are *.ts only)
+prisma.config.js
+prisma.config.js.map
+prisma.config.d.ts
+prisma.config.d.ts.map
+prisma/seed.js
+prisma/seed.js.map
+prisma/seed.d.ts
+prisma/seed.d.ts.map
+
 # Optional npm cache directory
 .npm
 
