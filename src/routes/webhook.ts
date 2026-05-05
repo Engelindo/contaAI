@@ -24,9 +24,19 @@ type MetaWebhookMessage = {
   };
 };
 
-const getWebhookPayloadMessage = (
-  body: unknown,
-): { message: string | undefined; phoneNumber: string | undefined } => {
+const processedMessageIds = new Map<string, number>();
+const PROCESSED_MESSAGE_TTL_MS = 15 * 60 * 1000;
+
+const pruneProcessedMessageIds = () => {
+  const cutoff = Date.now() - PROCESSED_MESSAGE_TTL_MS;
+  for (const [id, seenAt] of processedMessageIds.entries()) {
+    if (seenAt < cutoff) {
+      processedMessageIds.delete(id);
+    }
+  }
+};
+
+const getIncomingMessages = (body: unknown): MetaWebhookMessage[] => {
   const payload = body as {
     entry?: Array<{
       changes?: Array<{
@@ -37,10 +47,14 @@ const getWebhookPayloadMessage = (
     }>;
   };
 
-  const firstMessage = payload.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
-  const message = firstMessage?.text?.body;
-  const phoneNumber = firstMessage?.from;
-  return { message, phoneNumber };
+  const messages: MetaWebhookMessage[] = [];
+  for (const entry of payload.entry ?? []) {
+    for (const change of entry.changes ?? []) {
+      messages.push(...(change.value?.messages ?? []));
+    }
+  }
+
+  return messages;
 };
 
 const isValidSignature = (req: { headers: Record<string, unknown>; rawBody?: Buffer }): boolean => {
@@ -165,16 +179,8 @@ router.post("/", async (req, res) => {
     return res.sendStatus(401);
   }
 
-  const payload = request.body as {
-    entry?: Array<{
-      changes?: Array<{
-        value?: {
-          messages?: MetaWebhookMessage[];
-        };
-      }>;
-    }>;
-  };
-  const incomingMessages = payload.entry?.[0]?.changes?.[0]?.value?.messages ?? [];
+  pruneProcessedMessageIds();
+  const incomingMessages = getIncomingMessages(request.body);
   for (const incoming of incomingMessages) {
     console.log("[webhook] message received", {
       id: incoming.id,
@@ -182,27 +188,35 @@ router.post("/", async (req, res) => {
       type: incoming.type,
       text: incoming.text?.body,
     });
-  }
 
-  const { message, phoneNumber } = getWebhookPayloadMessage(request.body);
-  if (!message || !phoneNumber) {
-    // Meta sends multiple event types; acknowledge non-text events.
-    return res.sendStatus(200);
-  }
+    if (incoming.id && processedMessageIds.has(incoming.id)) {
+      console.log("[webhook] duplicate delivery ignored", { id: incoming.id });
+      continue;
+    }
 
-  const result = await processMessage(message, phoneNumber);
-  if (!result) {
-    return res.status(500).json({ error: "Failed to process message" });
-  }
+    if (!incoming.text?.body || !incoming.from) {
+      // Meta sends non-text events too; acknowledge and skip.
+      continue;
+    }
 
-  try {
-    await sendWhatsAppText({
-      to: phoneNumber,
-      body: result.message,
-    });
-  } catch (error) {
-    console.error("[webhook] failed to send reply", error);
-    return res.status(502).json({ error: "Failed to send WhatsApp reply" });
+    if (incoming.id) {
+      processedMessageIds.set(incoming.id, Date.now());
+    }
+
+    const result = await processMessage(incoming.text.body, incoming.from);
+    if (!result) {
+      console.error("[webhook] failed to process message", { id: incoming.id });
+      continue;
+    }
+
+    try {
+      await sendWhatsAppText({
+        to: incoming.from,
+        body: result.message,
+      });
+    } catch (error) {
+      console.error("[webhook] failed to send reply", error);
+    }
   }
 
   return res.sendStatus(200);
