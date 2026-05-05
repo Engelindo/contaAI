@@ -208,11 +208,21 @@ router.post("/", async (req, res) => {
       console.error("[webhook] failed to process message", { id: incoming.id });
       continue;
     }
+    console.log("[webhook] processed message", {
+      id: incoming.id,
+      intent: result.intent,
+      reply: result.message,
+    });
 
     try {
-      await sendWhatsAppText({
+      const sent = await sendWhatsAppText({
         to: incoming.from,
         body: result.message,
+      });
+      console.log("[webhook] reply sent", {
+        incomingId: incoming.id,
+        to: incoming.from,
+        outgoingId: sent.messageId,
       });
     } catch (error) {
       console.error("[webhook] failed to send reply", error);

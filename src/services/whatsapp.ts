@@ -5,7 +5,14 @@ type SendWhatsAppTextInput = {
   body: string;
 };
 
-export const sendWhatsAppText = async ({ to, body }: SendWhatsAppTextInput): Promise<void> => {
+type SendWhatsAppTextResult = {
+  messageId?: string;
+};
+
+export const sendWhatsAppText = async ({
+  to,
+  body,
+}: SendWhatsAppTextInput): Promise<SendWhatsAppTextResult> => {
   const url = `https://graph.facebook.com/${env.WHATSAPP_API_VERSION}/${env.WHATSAPP_PHONE_NUMBER_ID}/messages`;
 
   const response = await fetch(url, {
@@ -28,4 +35,10 @@ export const sendWhatsAppText = async ({ to, body }: SendWhatsAppTextInput): Pro
       `Failed to send WhatsApp message (${response.status} ${response.statusText}): ${errorBody}`,
     );
   }
+
+  const responseJson = (await response.json()) as {
+    messages?: Array<{ id?: string }>;
+  };
+  const messageId = responseJson.messages?.[0]?.id;
+  return messageId ? { messageId } : {};
 };
