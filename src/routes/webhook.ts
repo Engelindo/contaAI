@@ -15,7 +15,9 @@ import { messageCardRequired, messageNoCards } from "../messages/cardPrompts.js"
 const router = Router();
 
 type MetaWebhookMessage = {
+  id?: string;
   from?: string;
+  type?: string;
   text?: {
     body?: string;
   };
@@ -160,6 +162,25 @@ router.post("/", async (req, res) => {
   const request = req as { headers: Record<string, unknown>; rawBody?: Buffer; body: unknown };
   if (!isValidSignature(request)) {
     return res.sendStatus(401);
+  }
+
+  const payload = request.body as {
+    entry?: Array<{
+      changes?: Array<{
+        value?: {
+          messages?: MetaWebhookMessage[];
+        };
+      }>;
+    }>;
+  };
+  const incomingMessages = payload.entry?.[0]?.changes?.[0]?.value?.messages ?? [];
+  for (const incoming of incomingMessages) {
+    console.log("[webhook] message received", {
+      id: incoming.id,
+      from: incoming.from,
+      type: incoming.type,
+      text: incoming.text?.body,
+    });
   }
 
   const { message, phoneNumber } = getWebhookPayloadMessage(request.body);
