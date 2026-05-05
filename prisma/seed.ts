@@ -19,6 +19,9 @@ async function main() {
   await prisma.expense.deleteMany({
     where: { user: { phoneNumber: SEED_PHONE } },
   });
+  await prisma.card.deleteMany({
+    where: { user: { phoneNumber: SEED_PHONE } },
+  });
 
   const user = await prisma.user.upsert({
     where: { phoneNumber: SEED_PHONE },
@@ -26,10 +29,27 @@ async function main() {
     update: {},
   });
 
+  const nubank = await prisma.card.create({
+    data: {
+      userId: user.id,
+      name: "Nubank",
+      limit: 8000,
+    },
+  });
+
+  await prisma.card.create({
+    data: {
+      userId: user.id,
+      name: "Inter",
+      limit: 5000,
+    },
+  });
+
   await prisma.expense.createMany({
     data: [
       {
         userId: user.id,
+        cardId: nubank.id,
         amount: 45.9,
         category: "TRANSPORT",
         subcategory: "Uber",
@@ -38,6 +58,7 @@ async function main() {
       },
       {
         userId: user.id,
+        cardId: nubank.id,
         amount: 32.5,
         category: "TRANSPORT",
         subcategory: "Uber",
@@ -46,6 +67,7 @@ async function main() {
       },
       {
         userId: user.id,
+        cardId: nubank.id,
         amount: 89.9,
         category: "FOOD",
         subcategory: "iFood",
@@ -54,6 +76,7 @@ async function main() {
       },
       {
         userId: user.id,
+        cardId: nubank.id,
         amount: 156.4,
         category: "FOOD",
         subcategory: null,
@@ -62,6 +85,7 @@ async function main() {
       },
       {
         userId: user.id,
+        cardId: nubank.id,
         amount: 12,
         category: "FOOD",
         subcategory: null,
@@ -70,6 +94,7 @@ async function main() {
       },
       {
         userId: user.id,
+        cardId: nubank.id,
         amount: 120,
         category: "ENTERTAINMENT",
         subcategory: "Netflix",
@@ -78,6 +103,7 @@ async function main() {
       },
       {
         userId: user.id,
+        cardId: nubank.id,
         amount: 2500,
         category: "HOUSING",
         subcategory: null,
@@ -88,7 +114,9 @@ async function main() {
   });
 
   const count = await prisma.expense.count({ where: { userId: user.id } });
-  console.log(`Seeded user ${SEED_PHONE} with ${count} expenses (current month dates).`);
+  console.log(
+    `Seeded user ${SEED_PHONE} with 2 cards (Nubank + Inter); ${count} expenses on Nubank (current month dates).`,
+  );
 }
 
 main()

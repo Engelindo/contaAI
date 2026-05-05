@@ -1,10 +1,15 @@
 import { prisma } from "./prisma.js";
 import type { AddExpenseInput, SummaryPeriod } from "../types/ai.js";
 
-export async function createExpense(userId: string, input: AddExpenseInput) {
+export async function createExpense(
+  userId: string,
+  input: AddExpenseInput,
+  cardId: string | null,
+) {
   return prisma.expense.create({
     data: {
       userId,
+      cardId,
       amount: input.amount,
       category: input.category,
       subcategory: input.subcategory ?? null,
@@ -53,6 +58,9 @@ export async function getSummary(
   userId: string,
   period: SummaryPeriod,
   subcategoryFilter?: string,
+  cardIdFilter?: string,
+  /** When filtering by card, pass the display name (avoids an extra lookup). */
+  cardNameHint?: string | null,
 ) {
   const { start, end } = getPeriodRange(period);
   const subcategory = subcategoryFilter?.trim();
@@ -68,6 +76,7 @@ export async function getSummary(
           },
         }
       : {}),
+    ...(cardIdFilter ? { cardId: cardIdFilter } : {}),
   };
 
   const [totals, byCategory] = await Promise.all([
@@ -87,6 +96,7 @@ export async function getSummary(
   return {
     period,
     subcategoryFilter: subcategory ?? null,
+    cardNameFilter: cardIdFilter ? (cardNameHint ?? null) : null,
     totalAmount: totals._sum?.amount ?? 0,
     expenseCount: totals._count ?? 0,
     byCategory: byCategory.map((item) => ({

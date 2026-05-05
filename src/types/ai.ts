@@ -17,19 +17,28 @@ export const summaryPeriodSchema = z.enum([
   "ALL_TIME",
 ]);
 
+const optionalTrimmedString = z
+  .string()
+  .nullish()
+  .transform((s) => {
+    const t = s?.trim();
+    return t && t.length > 0 ? t : undefined;
+  });
+
+const optionalNonNegativeNumber = z
+  .number()
+  .nonnegative()
+  .nullish()
+  .transform((v) => (v === null || v === undefined ? undefined : v));
+
 export const parseResultSchema = z.discriminatedUnion("intent", [
   z.object({
     intent: z.literal("add_expense"),
     amount: z.number(),
     category: categorySchema,
-    /** Merchant or service label, e.g. "Uber", "iFood". Omit if not explicit. */
-    subcategory: z
-      .string()
-      .nullish()
-      .transform((s) => {
-        const t = s?.trim();
-        return t && t.length > 0 ? t : undefined;
-      }),
+    subcategory: optionalTrimmedString,
+    /** Card name if user said which card (e.g. "no Nubank"). Omit if not stated. */
+    card: optionalTrimmedString,
     date: z.string(),
     description: z.string(),
     /** Short user-facing confirmation in Brazilian Portuguese (WhatsApp-style). */
@@ -38,14 +47,15 @@ export const parseResultSchema = z.discriminatedUnion("intent", [
   z.object({
     intent: z.literal("get_summary"),
     period: summaryPeriodSchema,
-    /** When user asks spending for a specific merchant/service (e.g. "quanto gastei com uber"). */
-    subcategory: z
-      .string()
-      .nullish()
-      .transform((s) => {
-        const t = s?.trim();
-        return t && t.length > 0 ? t : undefined;
-      }),
+    subcategory: optionalTrimmedString,
+    /** Card name when user asks totals for one card. Omit for all cards / whole file. */
+    card: optionalTrimmedString,
+  }),
+  z.object({
+    intent: z.literal("add_card"),
+    name: z.string().trim().min(1),
+    limit: optionalNonNegativeNumber,
+    reply: z.string(),
   }),
 ]);
 
