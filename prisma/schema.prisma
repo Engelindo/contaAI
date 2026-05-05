@@ -24,12 +24,28 @@ model User {
   phoneNumber String    @unique
   createdAt   DateTime  @default(now())
   expenses    Expense[]
+  cards       Card[]
+}
+
+model Card {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  /** Credit limit in BRL; 0 = not set / unknown. */
+  limit     Float
+  createdAt DateTime  @default(now())
+  expenses  Expense[]
+
+  @@index([userId])
 }
 
 model Expense {
   id          String          @id @default(cuid())
   userId      String
   user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cardId      String?
+  card        Card?           @relation(fields: [cardId], references: [id], onDelete: SetNull)
   amount      Float
   category    ExpenseCategory
   subcategory String?
@@ -39,4 +55,5 @@ model Expense {
 
   @@index([userId, date])
   @@index([userId, subcategory])
+  @@index([userId, cardId])
 }
