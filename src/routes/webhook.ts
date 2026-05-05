@@ -11,6 +11,7 @@ import {
 import { createExpense, getSummary } from "../db/expenses.js";
 import { getOrCreateUserByPhone } from "../db/users.js";
 import { messageCardRequired, messageNoCards } from "../messages/cardPrompts.js";
+import { sendWhatsAppText } from "../services/whatsapp.js";
 
 const router = Router();
 
@@ -192,6 +193,16 @@ router.post("/", async (req, res) => {
   const result = await processMessage(message, phoneNumber);
   if (!result) {
     return res.status(500).json({ error: "Failed to process message" });
+  }
+
+  try {
+    await sendWhatsAppText({
+      to: phoneNumber,
+      body: result.message,
+    });
+  } catch (error) {
+    console.error("[webhook] failed to send reply", error);
+    return res.status(502).json({ error: "Failed to send WhatsApp reply" });
   }
 
   return res.sendStatus(200);
